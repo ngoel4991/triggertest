@@ -1,0 +1,69 @@
+name: Restricted Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual run'
+        required: true
+        default: 'Verification'
+
+# ------------------------------
+# Workflow Jobs
+# ------------------------------
+jobs:
+  # Job 1: Check Authorization and Set Output (Runs for everyone)
+  check_user:
+    runs-on: ubuntu-latest
+    
+    # 💡 The output variable 'is_allowed' will hold the result of the comparison
+    outputs:
+      is_allowed: ${{ steps.auth_check.outputs.allowed }}
+
+    steps:
+      - name: Perform User Authorization Check
+        id: auth_check
+        run: |
+          # Retrieve secret and actor values into shell variables
+          ALLOWED_USER="${{ secrets.ALLOWED_ACTOR }}"
+          CURRENT_ACTOR="${{ github.actor }}"
+          
+          echo "Comparing current actor (${CURRENT_ACTOR}) with allowed user (${ALLOWED_USER})"
+          
+          # Perform the case-sensitive string comparison in the shell
+          if [ "${CURRENT_ACTOR}" = "${ALLOWED_USER}" ]; then
+            # Set the output for subsequent jobs
+            echo "allowed=true" >> $GITHUB_OUTPUT
+            echo "✅ Authorization Passed."
+          else
+            echo "allowed=false" >> $GITHUB_OUTPUT
+            echo "❌ Authorization Failed."
+          fi
+          
+  # Job 2: The Main Job (Runs ONLY if allowed)
+  deploy_if_authorized:
+    runs-on: ubuntu-latest
+    needs: check_user
+    
+    # 🔑 KEY: Run ONLY if the check_user job's output is 'true'
+    if: needs.check_user.outputs.is_allowed == 'true'
+    
+    steps:
+      - name: 🚀 Deployment Tasks Start
+        run: |
+          echo "Authorized user ${{ github.actor }} is running the deployment."
+          # --- YOUR AZURE DEPLOYMENT STEPS GO HERE ---
+          
+  # Job 3: Explicitly Fails the Workflow (Runs ONLY if unauthorized)
+  block_unauthorized_run:
+    runs-on: ubuntu-latest
+    needs: check_user
+    
+    # 🔑 KEY: Run ONLY if the check_user job's output is NOT 'true'
+    if: needs.check_user.outputs.is_allowed != 'true'
+    
+    steps:
+      - name: 🛑 Unauthorized Access Blocked
+        run: |
+          echo "Unauthorized user ${{ github.actor }} attempted to run this workflow."
+          exit 1 # Forces the overall workflow run status to FAIL
