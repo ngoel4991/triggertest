@@ -1,0 +1,38 @@
+name: Restricted Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual run'
+        required: true
+        default: 'Testing restriction'
+
+jobs:
+  # Job 1: The main job that runs only for the authorized user
+  deploy_if_authorized:
+    runs-on: ubuntu-latest
+    
+    # *** KEY LINE: CHECK THE ACTOR AGAINST THE ALLOWED USERNAME ***
+    if: github.actor == 'ngoel4991@gmail.com' 
+    
+    steps:
+      - name: ✅ Authorization Check Passed
+        run: echo "Authorized user ${{ github.actor }} proceeding with deployment."
+      
+      - name: 🚀 Main Task
+        run: echo "Deployment logic executed successfully."
+
+  # Job 2: Explicitly fails the workflow for all unauthorized users
+  block_unauthorized_run:
+    runs-on: ubuntu-latest
+    needs: [] # No dependency
+    
+    # This job runs ONLY if the actor is NOT the allowed user
+    if: github.actor != 'ngoel4991@gmail.com'
+    
+    steps:
+      - name: ❌ Unauthorized User Blocked
+        run: |
+          echo "Unauthorized user ${{ github.actor }} attempted to run this workflow."
+          exit 1 # Forces the overall workflow run to fail immediately
