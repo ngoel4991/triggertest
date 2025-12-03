@@ -25,7 +25,7 @@ jobs:
         id: auth_check
         run: |
           # Retrieve secret and actor values into shell variables
-          ALLOWED_USER="${{ secrets.ALLOWED_ACTOR }}"
+          ALLOWED_USER="${{ secrets.ACTOR_NAME }}"
           CURRENT_ACTOR="${{ github.actor }}"
           
           echo "Comparing current actor (${CURRENT_ACTOR}) with allowed user (${ALLOWED_USER})"
